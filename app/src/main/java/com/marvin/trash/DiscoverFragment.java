@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,6 +31,7 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -82,6 +85,7 @@ public class DiscoverFragment extends Fragment implements View.OnClickListener {
     private ImageView iView;
     private ComponentName mComponentName;
     String mCurrentPhotoPath;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -112,11 +116,9 @@ public class DiscoverFragment extends Fragment implements View.OnClickListener {
                 }
                 break;
             case R.id.take_photo:
-                Toast.makeText(this.getActivity(),"你点击了这个按钮",Toast.LENGTH_LONG).show();
+                Toast.makeText(this.getActivity(), "你点击了这个按钮", Toast.LENGTH_LONG).show();
                 String pictureName = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault()).format(new Date()) +
                         "-" + System.currentTimeMillis() + ".jpg";
-
-//                File mOutputImage = new File(Environment.getExternalStorageDirectory(), pictureName);
                 File mOutputImage = new File(this.getActivity().getExternalCacheDir(), pictureName);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     imageUri = FileProvider.getUriForFile(this.getActivity(), BuildConfig.APPLICATION_ID + ".provider", mOutputImage);
@@ -152,18 +154,73 @@ public class DiscoverFragment extends Fragment implements View.OnClickListener {
             case REQUEST_CAPTURE: // 拍照
                 try {
                     Bitmap bitmap = BitmapFactory.decodeStream(this.getActivity().getContentResolver().openInputStream(imageUri));
+                    setPicToView(bitmap);// 保存在SD卡
                     iView.setImageBitmap(bitmap);
                 } catch (FileNotFoundException e) {
                     e.printStackTrace();
                 }
                 break;
             case REQUEST_ALBUM:
+                setPicToView(BitmapFactory.decodeFile(parsePicturePath(this.getActivity(), data.getData())));
                 iView.setImageBitmap(BitmapFactory.decodeFile(parsePicturePath(this.getActivity(), data.getData())));
                 break;
             default:
                 break;
         }
     }
+
+    private void setPicToView(Bitmap mBitmap) {
+        String sdStatus = Environment.getExternalStorageState();
+        if (!sdStatus.equals(Environment.MEDIA_MOUNTED)) { // 检测sd是否可用
+            return;
+        }
+        FileOutputStream b = null;
+        File file = new File(path);
+        file.mkdirs();// 创建文件夹
+        String fileName = path + "head.jpg";// 图片名字
+        try {
+            b = new FileOutputStream(fileName);
+            mBitmap.compress(Bitmap.CompressFormat.JPEG, 100, b);// 把数据写入文件
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                // 关闭流
+                b.flush();
+                b.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    @Override
+    public void onResume() {
+        // TODO Auto-generated method stub
+        super.onResume();
+        Bitmap bt = getBitmap(path + "head.jpg");
+        if (bt != null) {
+            @SuppressWarnings("deprecation")
+            Drawable drawable = new BitmapDrawable(bt);
+            iView.setImageDrawable(drawable);
+        }
+
+    }
+
+    private Bitmap getBitmap(String pathString) {
+        Bitmap bitmap = null;
+        try {
+            File file = new File(pathString);
+            if (file.exists()) {
+                bitmap = BitmapFactory.decodeFile(pathString);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return bitmap;
+    }
+
     private File createImageFile() throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
