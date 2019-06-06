@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">IdentifySpamApplication</string>
+    <string name="permission_title_rationale">是否允许权限</string>
+    <string name="label_ok">允许</string>
+    <string name="label_cancel">拒绝</string>
+</resources>
